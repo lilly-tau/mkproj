@@ -1,11 +1,6 @@
-
 		@@help:
 
-> "This is the test mkproj C config. There are two types: help and C.\n"
-> "The help type outputs this text and exits, as one might expect. The\n"
-> "C type takes a user variable 'build' which defaults to bash. If it is\n"
-> "bash, then the bash make script is used, if it is make then the\n"
-> "makefile is used.\n"
+#include "test-help.mkproj"
 
 		@@C:
 

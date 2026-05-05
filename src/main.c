@@ -70,7 +70,7 @@ IN const char *identifier)
 
 void
 config_exec(IN const char *src, IN const char *type,
-IN OUT struct variables *vars)
+IN OUT struct variables *vars, const char *file_path)
 {
 	size_t index, length;
 	FILE *const outputs[OUTPUT_COUNT] = {stdin, stdout, stderr};
@@ -96,7 +96,7 @@ IN OUT struct variables *vars)
 
 		tmpstr = strstr(parser.src, identifier);
 		p_assert(tmpstr != NULL, TRUE, "Could not find type '%s' on"
-			" line %u", type, parser.line);
+			" line %u (of file %s)", type, parser.line, file_path);
 		parser.index = tmpstr - parser.src + strlen(identifier) + 1;
 
 		parser.tindex = parser.index;
@@ -131,12 +131,13 @@ IN OUT struct variables *vars)
 		case '<':
 			p_assert(read_token(&parser, vars), TRUE,
 				"Input comand expects variable identifier,"
-				" got end of line %u.\n", parser.line);
+				" got end of line %u (of file %s).\n",
+				parser.line, file_path);
 
 			p_assert(is_identifier(parser.token), TRUE,
 				"Input command expects variable identifier,"
-				" got '%s' on line %u.\n", parser.token,
-				parser.line);
+				" got '%s' on line %u (file %s).\n",
+				parser.token, parser.line, file_path);
 
 			identifier = malloc(strlen(parser.token) + 1);
 			strcpy(identifier, parser.token);
@@ -147,8 +148,7 @@ IN OUT struct variables *vars)
 					input.contents + input.length,
 					input.capacity - input.length,
 					stdin));
-				if (input.length == input.capacity) {
-					input.capacity >>= 1;
+				if (input.length == input.capacity) { input.capacity >>= 1;
 					input.contents = realloc(
 						input.contents,
 						input.capacity);
@@ -168,18 +168,26 @@ IN OUT struct variables *vars)
 				tmpstr = get_var(vars, parser.token + 1);
 			}
 			p_assert(read_token(&parser, vars), TRUE,
-				"Conditional expects label on line %u.",
-				parser.line);
+				"Conditional expects label on line %u (of"
+				" file %s).", parser.line, file_path);
 
 			if (!*tmpstr) break;
 		case '%':
-			identifier = malloc(strlen(parser.token) + 3);
-			sprintf(identifier, "@%s:", parser.token + 1);
+			if (parser.token[1] == '$') {
+				identifier = malloc(strlen(
+					get_var(vars, parser.token + 2)) + 3);
+				sprintf(identifier, "@%s:",
+					get_var(vars, parser.token + 2));
+				
+			} else {
+				identifier = malloc(strlen(parser.token) + 3);
+				sprintf(identifier, "@%s:", parser.token + 1);
+			}
 
 			tmpstr = strstr(parser.src, identifier);
 			p_assert(tmpstr != NULL, TRUE, "Could not find"
-				" label '%s' on line %u", parser.token + 1,
-				parser.line);
+				" label '%s' on line %u (of file %s)",
+				parser.token + 1, parser.line, file_path);
 			parser.index = tmpstr - parser.src;
 
 			parser.tindex = parser.index;
@@ -192,7 +200,9 @@ IN OUT struct variables *vars)
 			break;
 		case '~':
 			p_assert(read_token(&parser, vars), TRUE,
-				"Mkdir instruction expects directory.\n");
+				"Mkdir instruction expects directory on"
+				" line %u (of file %s).\n", parser.line,
+				file_path);
 			mkdir(parser.token, 0777);
 			break;
 		case '|':
@@ -203,14 +213,15 @@ IN OUT struct variables *vars)
 				file = fopen(get_var(vars, "output"), "a");
 
 			p_assert(file != NULL, TRUE,
-				"Could not create file %s on line %u.\n",
-				get_var(vars, "output"), parser.line);
+				"Could not create file %s on line %u"
+				" (of file %s).\n", get_var(vars, "output"),
+				parser.line, file_path);
 
 			if (strchr(pipe_flags, '$') != NULL) {
 				p_assert(read_token(&parser, vars), TRUE,
 					"%s requires a variable as its first"
-					" argument on line %u.\n",
-					parser.token, parser.line);
+					" argument on line %u (of file %s).\n",
+					parser.token, parser.line, file_path);
 
 				fprintf(file, "%s", get_var(vars,
 					parser.token));
@@ -232,24 +243,26 @@ IN OUT struct variables *vars)
 		case '\\':
 			p_assert(strlen(parser.token) == 1, TRUE,
 				"A space must delimit the set command '\\'"
-				" and the variable name on line %u.\n",
-				parser.line);
+				" and the variable name on line %u (of"
+				" file %s).\n", parser.line, file_path);
 
 			p_assert(read_token(&parser, vars), TRUE,
 				"Set comand expects variable identifier, got"
-				" end of line %u.\n", parser.line);
+				" end of line %u (of file %s).\n",
+				parser.line, file_path);
 
 			p_assert(is_identifier(parser.token), TRUE,
 				"Set command expects variable identifier, got"
-				" '%s' on line %u.\n", parser.token,
-				parser.line);
+				" '%s' on line %u (of file %s).\n",
+				parser.token, parser.line, file_path);
 
 			identifier = malloc(strlen(parser.token) + 1);
 			strcpy(identifier, parser.token);
 
 			p_assert(read_token(&parser, vars), TRUE,
 				"Set command expects value, got end of"
-				" line %u.", parser.line);
+				" line %u (of file %s).", parser.line,
+				file_path);
 
 			if (!strcmp(parser.token, "("))
 				while(expr_exec(&parser, vars, identifier));
@@ -258,10 +271,37 @@ IN OUT struct variables *vars)
 
 			free(identifier);
 			break;
+		case '#':
+			if (!strcmp(parser.token + 1, "include")) {
+				p_assert(read_token(&parser, vars), TRUE,
+					"Include requires a path to read on"
+					" line %u (of file %s).\n",
+					parser.line, file_path);
+				file = fopen(parser.token, "r");
+				p_assert(file != NULL, TRUE,
+					"Could not open file %s for include,"
+					" on line %u (of file %s).\n",
+					parser.token, parser.line, file_path);
+
+				fseek(file, 0L, SEEK_END);
+				length = ftell(file);
+				value = calloc(1, length + 1);
+				fseek(file, 0L, SEEK_SET);
+				length = fread(value, 1, length, file);
+				value = realloc(value, length);
+				value[length] = 0;
+				fclose(file);
+
+				config_exec(value, "", vars, parser.token);
+
+				free(value);
+			}
+			break;
 		default:
 			p_assert(FALSE, TRUE,
-				"Invalid command '%s' on line %u.\n",
-				parser.token, parser.line);
+				"Invalid command '%s' on line %u (of"
+				" file %s).\n", parser.token, parser.line,
+				file_path);
 			break;
 		}
 	}
@@ -315,7 +355,7 @@ main(int argc, char **argv)
 	p_assert(read_file(config_path, &config), TRUE,
 		"Could not read config (%s).\n", config_path);
 
-	config_exec(config, type, &vars);
+	config_exec(config, type, &vars, config_path);
 
 	destroy_variables(&vars);
 	free(config_path);

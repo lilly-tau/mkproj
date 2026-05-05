@@ -139,9 +139,10 @@ EXAMPLE
 
 		GOTO COMMAND
 
-	%.<token>
+	%.["$"].<identifier>
 
-Goes to the LABEL specified by the token.
+Goes to the LABEL specified by the identifier. If the dollarsign flag is
+present go to the label specified by the variable in the identifier.
 
 EXAMPLE
 
@@ -221,3 +222,16 @@ EXAMPLE
 	|&$ message
 	| \n");
 	|	}
+
+
+		DIRECTIVE COMMAND
+
+	#.("include" <token>)
+
+Runs the directive specified. This directive may be one of the following:
+
+	INCLUDE
+
+	include <token>
+
+Executes the file specified.

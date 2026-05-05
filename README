@@ -1,0 +1,220 @@
+		MKPROJ
+
+		USAGE
+
+	mkproj [-c <config file>] [-t <type>] {-D <variable>=<value>}
+
+-c file
+	Sets the config file to be executed, if none are provided, defaults to
+	"~/.mkproj".
+-t type
+	Sets the type to begin at.
+
+-D <variable>=<value>
+	Set the variable with the identifier <variable> the value <value>.
+
+
+		CONFIG FORMAT
+
+A config may be considered a set of line delimited commands which each
+consists of a set of tokens delimitted by space, tabs or commas.
+
+A token may be either an identifier literal, a string literal, or a variable
+substitution.
+
+An identifier literal comprises of any set of characters which is not
+interrupted by spaces, tabs, newlines, or commas.
+
+A string literal is a set of characters enclosed in double quotes,
+interspersed with the following escape codes:
+
+	'\n'	Newline
+	'\t'	Tab
+	'\r'	Carriage return
+	'\xNN'	ASCII hex NN
+
+A variable substitution is a dollarsign followed by an identifier.
+
+An identifier is any set of alphabetic characters interspersed with
+underscore.
+
+		EXPRESSIONS
+
+An expression is a form of argument given to certain instructions, generally
+a list beginning with some leading token, which is not included in the
+expression and terminated with a closing parenthesis. An example is the SET
+command which may, instead of a token value, be followed by an open
+parenthesis and a set of expressions. Like so:
+
+	\ x ( eq $a $b, not $x )
+
+Note that for each expression within a parenthetical, the result is written to
+the set variable as each expression is in fact a command with an end result.
+This makes the following:
+
+	\ x ( eq $a $b )
+	\ x ( not $x )
+
+Equivalent to the aforementioned example. Note also that the opening token
+(in this case '(') and the closing token (')') must be delimited (either with
+spaces, tabs, or commas) as they must be their own token.
+
+There are the following expressions currently implemented:
+
+	EQ
+
+		eq <token> <token>
+
+	Returns "true" if the tokens specified are exactly string equal,
+	otherwise returns "".
+
+	NOT
+
+		not <token>
+
+	Returns "true" if the token evaluates to "", otherwise returns "".
+
+	CAT
+
+		cat <token> <token>
+
+	Returns the string result of concatenating the two token results.
+
+		OUTPUT COMMAND
+
+	">".["0" | "1" | "2"].*<token>
+
+Where the number following the initial '>' determines the output file; files
+are enumerated in the order STDIN, STDOUT, STDERR with a default of 1/STDOUT.
+This output is required to be flushed by the end of the instruction.
+
+EXAMPLE
+
+	> "Hello World!\n"
+
+		INPUT COMMAND
+
+	< <identifier>
+
+Sets the variable of the identifier specified to a line inputted by the user
+(the newline character is not included).
+
+EXAMPLE
+
+	> "What is your name? "
+	< name
+	> "Hello " $name "\n"
+
+		SET COMMAND
+
+	\ <identifier> (<token> | "(" {expr})
+
+Sets the variable of the identifier specified either to the token specified
+or as the result variable to be used for the set of expressions specified.
+
+EXAMPLE
+
+	\ x "Hello"
+	> $x "\n"
+	\ x ( cat $x " World!" )
+	> $x "\n"
+
+		LABEL COMMAND
+
+	@.[@].*($00-$39 | $3B-$FF).[":"]
+
+Skips over a line, and if a colon is included, then it may be found using the
+GOTO command as a label. If there is a second '@', when it come across
+(without a GOTO) then the program shall exit.
+
+EXAMPLE
+
+	> "Hello World!"
+	@@	This text shall not error, and the program shall exit before
+	@	Reaching the 'Goodbye World!' message.
+	> "Goodbye world!"
+
+		GOTO COMMAND
+
+	%.<token>
+
+Goes to the LABEL specified by the token.
+
+EXAMPLE
+
+	@ Prints "a\nc\n"
+	> "a\n"
+	%c
+	> "b\n"
+	@c:
+	> "c\n"
+
+		GOTO-IF COMMAND
+
+	("?".<identifier> | "?(" *<expr>) "%".<token>
+
+If the command is passed an identifier (no space) then the GOTO-IF shall check
+if that variable is empty, if it is not, then the goto command shall be
+executed. Otherwise, it shall not.
+
+If the command is passed expressions, then the GOTO-IF executes the
+expressions on the variable "_c" and then acts as though it was called as
+"?_c".
+
+EXAMPLE
+
+	\ x ( eq $a $b )
+	?x %equal
+	> "a and b are equal!"
+	@equal:
+
+	@@ Which is equivalent to the following
+
+	?( eq $a $b ) %equal
+	> "a and b are equal!"
+	@equal:
+	@@
+
+		MKDIR COMMAND
+
+	~ <token>
+
+Tries to create a directory of the token specified.
+
+		PIPE COMMAND
+
+	"|".*("|" | "&" | "$")
+
+The pipe command shall write a line of text to the file specified in the
+"output" variable. If this variable is not an existing file, it is created.
+If it is an invalid file/you do not have permission to access it, then the
+pipe shall fail.
+
+If the pipe is followed by a second pipe, the write is not appended but
+instead overwrites the file. If it is followed by an ampersand, the write
+has no newline appended to it. As a result of this, a file may be cleared
+using "||&" immediately followed by a newline. If it is followed by a
+dollarsign, then the following token shall be interpretted as an identifier
+as opposed to the beginning of a line.
+
+Unless a variable is specified with the dollarsign flag, the pipe takes its
+input until newline in its entirety, save for a single leading whitespace (if
+present) which is removed. This allows for programs written through pipes to
+be reasonably seamless to simply writing them normally.
+
+EXAMPLE
+
+	> "What should the message be? "
+	< message
+	\ output "test.c"
+	||&
+	|	#include <stdio.h>
+	|	#include <stdlib.h>
+	|
+	|	int
+	|	main(int argc, char **argv)
+	|	{
+	|&		printf("
+	|&$ message
+	| \n");
+	|	}

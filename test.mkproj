@@ -1,0 +1,87 @@
+
+		@@help:
+
+> "This is the test mkproj C config. There are two types: help and C.\n"
+> "The help type outputs this text and exits, as one might expect. The\n"
+> "C type takes a user variable 'build' which defaults to bash. If it is\n"
+> "bash, then the bash make script is used, if it is make then the\n"
+> "makefile is used.\n"
+
+		@@C:
+
+?build %BuildExists
+	>2 "Setting build to bash...\n"
+	\ build bash
+@BuildExists:
+
+~ test
+\ output "test/test.c"
+||&
+|	#include <stdio.h>
+|	#include <stdlib.h>
+|
+|	int
+|	main(int argc, char **argv)
+|	{
+|		if (argc > 0) {
+|			printf("Hello %s!\n", argv[1]);
+|		} else {
+|			printf("Hello World!\n");
+|		}
+|		exit(0);
+|	}
+?( eq $build bash, not $_c ) %NotBash
+\ output "test/make.sh" ||&
+|	#!/usr/bin/env bash
+|
+|	DEBUG=none
+|	TEST=false
+|
+|	if [[ "$TESTFLAGS" = "" ]]; then
+|		TESTFLAGS="test!"
+|	fi
+|
+|	while getopts "dtv" OPT; do
+|		case $OPT in
+|		d)	DEBUG=gdb;;
+|		t)	TEST=true;;
+|		v)	DEBUG=valgrind;;
+|		esac
+|	done
+|
+|	if [[ -d build ]]; then
+|		rm -r build
+|	fi
+|
+|	mkdir build || exit 1
+|	cc $CFLAGS -o build/main test.c || exit 1
+|
+|	if [[ "$TEST" = true ]]; then
+|		if [[ "$DEBUG" = gdb ]]; then
+|			gdb -ex "set args $TESTFLAGS" build/main
+|		elif [[ "$DEBUG" = valgrind ]]; then
+|			valgrind build/main $TESTFLAGS
+|		else
+|			build/main $TESTFLAGS
+|		fi
+|	fi
+%FinishedBuild
+@NotBash:
+?( eq $build make, not $_c ) %NotMake
+\ output "test/Makefile"
+||&
+|	all: build/main | build
+|
+|	build/main: test.c | build
+|		$(CC) $(CFLAGS) -o $@ $^
+|
+|	build:
+|		mkdir -p $@
+|
+|	test: all FORCE
+|		build/main Test
+|
+|	FORCE:
+@NotMake:
+@@
+@FinishedBuild:

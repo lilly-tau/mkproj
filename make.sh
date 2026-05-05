@@ -3,10 +3,12 @@
 CFLAGS="-std=c90 -Wpedantic"
 DEBUG=none
 TEST=false
+INSTALL=false
 
-while getopts "dtv" OPT; do
+while getopts "ditv" OPT; do
 	case $OPT in
 	d) DEBUG=gdb;;
+	i) INSTALL=true;;
 	t) TEST=true;;
 	v) DEBUG=valgrind;;
 	esac
@@ -35,4 +37,8 @@ if [[ "$TEST" = true ]]; then
 		build/mkproj -ctest.mkproj -tC -Dbuild=bash
 		build/mkproj -ctest.mkproj -tC -Dbuild=make
 	fi
+fi
+
+if [[ "$INSTALL" = true ]]; then
+	cp build/mkproj /usr/bin/mkproj
 fi

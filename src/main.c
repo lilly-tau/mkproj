@@ -1,4 +1,5 @@
 #include <getopt.h>
+#include <libgen.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@
 
 BOOLEAN
 expr_exec(IN OUT struct parser *parser, IN OUT struct variables *vars,
-IN const char *identifier)
+IN const char *identifier, IN const char *file_path)
 {
 	char *tokens[2];
 
@@ -59,6 +60,10 @@ IN const char *identifier)
 			+ strlen(parser->token) + 1);
 		strcat(tokens[0], parser->token);
 		set_var(vars, identifier, tokens[0]);
+	} else if (!strcmp("curdir", parser->token)) {
+		tokens[0] = malloc(strlen(file_path) + 1);
+		strcpy(tokens[0], file_path);
+		set_var(vars, identifier, dirname(tokens[0]));
 	} else if (!strcmp(")", parser->token)) {
 		return FALSE;
 	} else {
@@ -164,7 +169,8 @@ IN OUT struct variables *vars, const char *file_path)
 			break;
 		case '?':
 			if (!strcmp(parser.token + 1, "(")) {
-				while(expr_exec(&parser, vars, "_c"));
+				while(expr_exec(&parser, vars, "_c",
+				file_path));
 				tmpstr = get_var(vars, "_c");
 			} else {
 				tmpstr = get_var(vars, parser.token + 1);
@@ -268,7 +274,8 @@ IN OUT struct variables *vars, const char *file_path)
 				file_path);
 
 			if (!strcmp(parser.token, "("))
-				while(expr_exec(&parser, vars, identifier));
+				while(expr_exec(&parser, vars, identifier,
+				file_path));
 			else
 				set_var(vars, identifier, parser.token);
 

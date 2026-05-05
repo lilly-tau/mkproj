@@ -6,7 +6,8 @@
 		@@help:
 
 #call %help_function
-> "Exiting help...\n"
+\ x ( curdir )
+> "Exiting help... (" $x ")\n"
 
 		@@C:
 

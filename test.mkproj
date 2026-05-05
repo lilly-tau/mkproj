@@ -1,6 +1,12 @@
+@ This is a comment
+@help_function:
+	#include "test-help.mkproj"
+#return
+
 		@@help:
 
-#include "test-help.mkproj"
+#call %help_function
+> "Exiting help...\n"
 
 		@@C:
 
@@ -9,7 +15,7 @@
 	\ build bash
 @BuildExists:
 
-~ test
+~ "test"
 \ output "test/test.c"
 ||&
 |	#include <stdio.h>
@@ -25,8 +31,9 @@
 |		}
 |		exit(0);
 |	}
-?( eq $build bash, not $_c ) %NotBash
-\ output "test/make.sh" ||&
+?( eq $build "bash", not $_c ) %NotBash
+\ output "test/make.sh"
+||&
 |	#!/usr/bin/env bash
 |
 |	DEBUG=none

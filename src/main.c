@@ -77,6 +77,7 @@ IN OUT struct variables *vars, const char *file_path)
 	FILE *file;
 	unsigned char output_index;
 	char pipe_flags[0x10];
+	char number[0x20];
 	char *identifier, *value;
 	const char *tmpstr;
 	struct parser parser;
@@ -84,6 +85,7 @@ IN OUT struct variables *vars, const char *file_path)
 		char *contents;
 		size_t capacity, length;
 	} input = {0};
+	size_t return_place;
 
 	input.contents = malloc(0x200);
 	input.capacity = 0x200;
@@ -173,6 +175,7 @@ IN OUT struct variables *vars, const char *file_path)
 
 			if (!*tmpstr) break;
 		case '%':
+	goto_command:
 			if (parser.token[1] == '$') {
 				identifier = malloc(strlen(
 					get_var(vars, parser.token + 2)) + 3);
@@ -295,6 +298,19 @@ IN OUT struct variables *vars, const char *file_path)
 				config_exec(value, "", vars, parser.token);
 
 				free(value);
+			} else if (!strcmp(parser.token + 1, "call")) {
+				p_assert(read_token(&parser, vars), TRUE,
+					"Call expects a goto on line %u (of"
+					" file %s)", parser.line, file_path);
+				sprintf(number, "%u",
+					parser.index + parser.next);
+				set_var(vars, "return", number);
+				goto goto_command;
+			} else if (!strcmp(parser.token + 1, "return")) {
+				parser.index = strtoul(get_var(vars, "return"),
+					NULL, 0x0A);
+				parser.tindex = parser.index;
+				parser.next = 0;
 			}
 			break;
 		default:

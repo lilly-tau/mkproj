@@ -1,5 +1,8 @@
 		MKPROJ
 
+A VIMSCRIPT CAN BE FOUND AT
+	<https://github.com/lilly-tau/vimscripts/tree/main/mkproj>
+
 		USAGE
 
 	mkproj [-c <config file>] [-t <type>] {-D <variable>=<value>}

@@ -20,12 +20,11 @@ else
 	CFLAGS="$CFLAGS -g"
 fi
 
-if [[ -d build ]]; then
-	rm -r build || exit 1
-fi
-
-mkdir build
+rm -rf ./build
+mkdir ./build
+chmod +w ./build
 cc $CFLAGS -o build/mkproj src/*.c || exit 1
+chmod +x build/mkproj
 
 if [[ "$TEST" = true ]]; then
 	if [[ "$DEBUG" = gdb ]]; then

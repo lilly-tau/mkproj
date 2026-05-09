@@ -100,7 +100,7 @@ read_line(struct parser *ret)
 BOOLEAN
 read_token(struct parser *ret, struct variables *vars) {
 	size_t place, count;
-	char c, num[3] = {0};
+	char c, num[5] = {'0', 'x', '0', '0', '\0'};
 	const char *value;
 	long tmp;
 	char *eptr;
@@ -130,11 +130,11 @@ read_token(struct parser *ret, struct variables *vars) {
 				case 'r': c = '\r'; break;
 				case 't': c = '\t'; break;
 				case 'x':
-					num[0] = ret->src[ret->tindex + 1];
-					num[1] = ret->src[ret->tindex + 2];
+					num[2] = ret->src[ret->tindex + 1];
+					num[3] = ret->src[ret->tindex + 2];
 					ret->tindex += 2;
 					tmp = strtol(num, &eptr, 0x10);
-					p_assert(*eptr != 0, TRUE,
+					p_assert(*eptr == 0, TRUE,
 						"Invalid \\x in string on"
 						" line %u.\n",
 						ret->line);

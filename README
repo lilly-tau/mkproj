@@ -41,6 +41,12 @@ A variable substitution is a dollarsign followed by an identifier.
 An identifier is any set of alphabetic characters interspersed with
 underscore.
 
+An atom is any set of characters not including the ETX character (ASCII 03) or
+beginning with the STX character (ASCII 02).
+
+A list is a set of atoms beginning with the STX character (ASCII 02) and
+deimited with the ETX character (ASCII 03).
+
 		EXPRESSIONS
 
 An expression is a form of argument given to certain instructions, generally
@@ -66,9 +72,9 @@ There are the following expressions currently implemented:
 
 	EQ
 
-		eq <token> <token>
+		eq <atom> <atom>
 
-	Returns "true" if the tokens specified are exactly string equal,
+	Returns "true" if the atoms specified are exactly string equal,
 	otherwise returns "".
 
 	NOT
@@ -82,6 +88,37 @@ There are the following expressions currently implemented:
 		cat <token> <token>
 
 	Returns the string result of concatenating the two token results.
+
+	CURDIR
+
+		curdir
+
+	Returns the listed directory of the current mkproj file.
+
+	ATOM
+
+		atom <token>
+
+	Returns "true" if the token is an atom and "" elsewise.
+
+	CAR
+
+		car <list>
+
+	Returns the first element of a list, errors if the list is an atom.
+
+	CDR
+
+		cdr <list>
+
+	Returns the list without its first element, errors if the list is an
+	atom.
+
+	CONS
+
+		cons <token> <token>
+
+	Returns a list of the two tokens specified.
 
 		OUTPUT COMMAND
 
@@ -128,7 +165,9 @@ EXAMPLE
 
 Skips over a line, and if a colon is included, then it may be found using the
 GOTO command as a label. If there is a second '@', when it come across
-(without a GOTO) then the program shall exit.
+(without a GOTO) then the program shall exit. The LABEL command also sets the
+$_pfx variable to the label including the leading '@' and not including the
+terminating ':'.
 
 EXAMPLE
 
@@ -142,7 +181,9 @@ EXAMPLE
 	%.["$"].<identifier>
 
 Goes to the LABEL specified by the identifier. If the dollarsign flag is
-present go to the label specified by the variable in the identifier.
+present go to the label specified by the variable in the identifier. If the
+label begins with a '.', then the program shall jump to the first instance of
+the label (including the period) after the label stored in $_pfx.
 
 EXAMPLE
 

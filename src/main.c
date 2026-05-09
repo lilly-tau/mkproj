@@ -19,18 +19,27 @@ IN const char *identifier, IN const char *file_path)
 	char *tokens[2];
 
 	p_assert(read_token(parser, vars), TRUE, "Expression expects"
-		" operation on line %u.\n", parser->line);
+		" operation on line %u (of file %s).\n", parser->line,
+		file_path);
 
 	if (!strcmp("eq", parser->token)) {
 		p_assert(read_token(parser, vars), TRUE, "eq expects two"
-			" arguments, got zero on line %u.\n", parser->line);
+			" arguments, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
 		tokens[0] = malloc(strlen(parser->token) + 1);
 		strcpy(tokens[0], parser->token);
+		p_assert(strchr(tokens[0], '\x03') == NULL, TRUE,
+			"eq expects atomic values on line %u (of file %s)",
+			parser->line, file_path);
 
 		p_assert(read_token(parser, vars), TRUE, "eq expects two"
-			" arguments, got one on line %u.\n", parser->line);
+			" arguments, got one on line %u (of file %s).\n",
+			parser->line, file_path);
 		tokens[1] = malloc(strlen(parser->token) + 1);
 		strcpy(tokens[1], parser->token);
+		p_assert(strchr(tokens[1], '\x03') == NULL, TRUE,
+			"eq expects atomic values on line %u (of file %s)",
+			parser->line, file_path);
 
 		set_var(vars, identifier,
 			!strcmp(tokens[0], tokens[1])
@@ -41,7 +50,8 @@ IN const char *identifier, IN const char *file_path)
 		free(tokens[1]);
 	} else if (!strcmp("not", parser->token)) {
 		p_assert(read_token(parser, vars), TRUE, "not expects an"
-			" arguments, got none on line %u.\n", parser->line);
+			" arguments, got none on line %u (of file %s).\n",
+			parser->line, file_path);
 		tokens[0] = malloc(strlen(parser->token) + 1);
 		strcpy(tokens[0], parser->token);
 
@@ -50,20 +60,93 @@ IN const char *identifier, IN const char *file_path)
 		free(tokens[0]);
 	} else if(!strcmp("cat", parser->token)) {
 		p_assert(read_token(parser, vars), TRUE, "cat expects two"
-			" arguments, got zero on line %u.\n", parser->line);
+			" arguments, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
 		tokens[0] = malloc(strlen(parser->token) + 1);
 		strcpy(tokens[0], parser->token);
 
 		p_assert(read_token(parser, vars), TRUE, "cat expects two"
-			" arguments, got one on line %u.\n", parser->line);
+			" arguments, got one on line %u (of file %s).\n",
+			parser->line, file_path);
 		tokens[0] = realloc(tokens[0], strlen(tokens[0])
 			+ strlen(parser->token) + 1);
 		strcat(tokens[0], parser->token);
 		set_var(vars, identifier, tokens[0]);
+		free(tokens[0]);
 	} else if (!strcmp("curdir", parser->token)) {
 		tokens[0] = malloc(strlen(file_path) + 1);
 		strcpy(tokens[0], file_path);
 		set_var(vars, identifier, dirname(tokens[0]));
+		free(tokens[0]);
+	} else if (!strcmp("atom", parser->token)) {
+		p_assert(read_token(parser, vars), TRUE, "atom expects one"
+			" argument, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
+		set_var(vars, identifier,
+			strchr(parser->token, '\x03') == NULL
+			? "true"
+			: "");
+	} else if (!strcmp("car", parser->token)) {
+		p_assert(read_token(parser, vars), TRUE, "car expects one"
+			" argument, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
+		p_assert(strchr(parser->token, '\x03') != NULL, TRUE,
+			"car expects list argument on line %u (of file %s)\n",
+			parser->line, file_path);
+		tokens[0] = malloc(strlen(parser->token) + 1);
+		strcpy(tokens[0], parser->token);
+
+		set_var(vars, identifier, strtok(tokens[0], "\x03"));
+		free(tokens[0]);
+	} else if (!strcmp("cdr", parser->token)) {
+		p_assert(read_token(parser, vars), TRUE, "cdr expects one"
+			" argument, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
+		p_assert(strchr(parser->token, '\x03') != NULL, TRUE,
+			"car expects list argument on line %u (of file %s)\n",
+			parser->line, file_path);
+
+		set_var(vars, identifier, strchr(parser->token, '\x03') + 1);
+	} else if (!strcmp("cons", parser->token)) {
+		p_assert(read_token(parser, vars), TRUE, "cons expects two"
+			" arguments, got zero on line %u (of file %s).\n",
+			parser->line, file_path);
+		tokens[0] = malloc(strlen(parser->token) + 1);
+		strcpy(tokens[0], parser->token);
+
+		p_assert(read_token(parser, vars), TRUE, "cons expects two"
+			" arguments, got one on line %u (of file %s).\n",
+			parser->line, file_path);
+		tokens[0] = realloc(tokens[0], strlen(tokens[0])
+			+ strlen(parser->token) + 2);
+		strcat(tokens[0], "\x03");
+		strcat(tokens[0], parser->token);
+
+		set_var(vars, identifier, tokens[0]);
+
+		free(tokens[0]);
+	} else if (!strcmp("\\", parser->token)) {
+		p_assert(read_token(parser, vars), TRUE, "set expr expects"
+			" two arguments got none on line %u (of file %s).\n",
+			parser->line, file_path);
+		tokens[0] = malloc(strlen(parser->token) + 1);
+		strcpy(tokens[0], parser->token);
+
+		p_assert(is_identifier(tokens[0]), TRUE, "set expr expects an"
+			" identifier as the first argument, got '%s' on line"
+			" %u (of file %s)", tokens[0], parser->line,
+			file_path);
+
+		p_assert(read_token(parser, vars), TRUE, "set expr expects "
+			"two arguments got one on line %u (of file %s).\n",
+			parser->line, file_path);
+
+		if (!strcmp("(", parser->token))
+			while (expr_exec(parser, vars, tokens[0], file_path));
+		else
+			set_var(vars, tokens[0], parser->token);
+
+		free(tokens[0]);
 	} else if (!strcmp(")", parser->token)) {
 		return FALSE;
 	} else {
@@ -85,6 +168,7 @@ IN OUT struct variables *vars, const char *file_path)
 	char number[0x20];
 	char *identifier, *value;
 	const char *tmpstr;
+	BOOLEAN first;
 	struct parser parser;
 	struct {
 		char *contents;
@@ -128,9 +212,24 @@ IN OUT struct variables *vars, const char *file_path)
 			index = (parser.src[parser.index] == ' '
 				|| parser.src[parser.index] == '\t');
 
-			while (read_token(&parser, vars))
-				fprintf(outputs[output_index], "%s",
-					parser.token);
+			while (read_token(&parser, vars)) {
+				value = malloc(strlen(parser.token) + 1);
+				strcpy(value, parser.token);
+
+				tmpstr = strtok(value, "\x03");
+				first = TRUE;
+				while (tmpstr != NULL) {
+					if (!first) {
+						fprintf(outputs[output_index],
+							", ");
+					}
+					first = FALSE;
+					fprintf(outputs[output_index], "%s",
+						tmpstr);
+					tmpstr = strtok(NULL, "\x03");
+				}
+
+			}
 
 			fflush(outputs[output_index]);
 
@@ -187,13 +286,19 @@ IN OUT struct variables *vars, const char *file_path)
 					get_var(vars, parser.token + 2)) + 3);
 				sprintf(identifier, "@%s:",
 					get_var(vars, parser.token + 2));
-				
 			} else {
 				identifier = malloc(strlen(parser.token) + 3);
 				sprintf(identifier, "@%s:", parser.token + 1);
 			}
 
-			tmpstr = strstr(parser.src, identifier);
+			if (identifier[1] == '.') {
+				tmpstr = strstr(
+					strstr(parser.src,
+					get_var(vars, "_pfx")),
+					identifier);
+			} else
+				tmpstr = strstr(parser.src, identifier);
+
 			p_assert(tmpstr != NULL, TRUE, "Could not find"
 				" label '%s' on line %u (of file %s)",
 				parser.token + 1, parser.line, file_path);
@@ -206,6 +311,14 @@ IN OUT struct variables *vars, const char *file_path)
 		case '@':
 			if (parser.token[1] == '@')
 				return;
+			else if((tmpstr = strchr(parser.token, ':')) != NULL
+			&& parser.token[1] != '.') {
+				value = malloc(tmpstr - parser.token + 1);
+				memcpy(value, parser.token,
+					tmpstr - parser.token);
+				value[tmpstr - parser.token] = 0;
+				set_var(vars, "_pfx", value);
+			}
 			break;
 		case '~':
 			p_assert(read_token(&parser, vars), TRUE,
@@ -332,7 +445,7 @@ IN OUT struct variables *vars, const char *file_path)
 	destroy_parser(&parser);
 }
 
-#define DEFAULT_CONFIG "~/.mkproj"
+#define DEFAULT_CONFIG ".mkproj"
 int
 main(int argc, char **argv)
 {
@@ -371,8 +484,9 @@ main(int argc, char **argv)
 
 	p_assert(type != NULL, TRUE, "No type specified.\n");
 	if (config_path == NULL) {
-		config_path = malloc(strlen(DEFAULT_CONFIG) + 1);
-		strcpy(config_path, DEFAULT_CONFIG);
+		config_path = malloc(strlen(getenv("HOME"))
+			+ strlen(DEFAULT_CONFIG) + 1);
+		sprintf(config_path, "%s/%s", getenv("HOME"), DEFAULT_CONFIG);
 	}
 
 	p_assert(read_file(config_path, &config), TRUE,

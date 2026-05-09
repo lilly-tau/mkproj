@@ -5,6 +5,19 @@
 
 		@@help:
 
+	\ list "a\x03b\x03c\x03d\x03NIL"
+	@loop:
+	?( atom $list, not $_c ) %.continue
+	?( eq $list NIL ) %.end
+	@.continue:
+		\ element ( car $list )
+		\ list ( cdr $list )
+		> $element "\n"
+		%loop
+	@.end:
+
+	@@
+
 #call %help_function
 \ x ( curdir )
 > "Exiting help... (" $x ")\n"

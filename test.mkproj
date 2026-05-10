@@ -1,6 +1,6 @@
 @ This is a comment
 @help_function:
-	#include "test-help.mkproj"
+	#execute "test-help.mkproj"
 #return
 
 		@@help:
@@ -16,7 +16,6 @@
 		%loop
 	@.end:
 
-	@@
 
 #call %help_function
 \ x ( curdir )

@@ -120,6 +120,12 @@ There are the following expressions currently implemented:
 
 	Returns a list of the two tokens specified.
 
+	SET
+
+		\ <identifier> <expr>
+
+	Sets the variable specified to the expression specified.
+
 		OUTPUT COMMAND
 
 	">".["0" | "1" | "2"].*<token>
@@ -271,8 +277,28 @@ EXAMPLE
 
 Runs the directive specified. This directive may be one of the following:
 
+	EXECUTE
+
+	execute <token>
+
+Executes the file specified.
+
 	INCLUDE
 
 	include <token>
 
-Executes the file specified.
+Includes the file specified as though it were originally in the file (this
+is not done prior to execution).
+
+	CALL
+
+	call <token>
+
+Sets $return to the index of the next line.
+
+	RETURN
+
+	return
+
+Continues execution at the index within $return.
+

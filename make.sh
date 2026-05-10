@@ -39,5 +39,7 @@ if [[ "$TEST" = true ]]; then
 fi
 
 if [[ "$INSTALL" = true ]]; then
-	cp build/mkproj /usr/bin/mkproj
+	set +x
+	sudo cp build/mkproj /usr/bin/mkproj
+	set -x
 fi

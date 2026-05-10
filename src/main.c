@@ -157,7 +157,7 @@ IN const char *identifier, IN const char *file_path)
 }
 
 void
-config_exec(IN const char *src, IN const char *type,
+config_exec(IN const char *origin_src, IN const char *type,
 IN OUT struct variables *vars, const char *file_path)
 {
 	size_t index, length;
@@ -175,6 +175,10 @@ IN OUT struct variables *vars, const char *file_path)
 		size_t capacity, length;
 	} input = {0};
 	size_t return_place;
+	char *src;
+
+	src = malloc(strlen(origin_src) + 1);
+	strcpy(src, origin_src);
 
 	input.contents = malloc(0x200);
 	input.capacity = 0x200;
@@ -395,7 +399,30 @@ IN OUT struct variables *vars, const char *file_path)
 			free(identifier);
 			break;
 		case '#':
-			if (!strcmp(parser.token + 1, "include")) {
+			if (!strcmp(parser.token + 1, "execute")) {
+				p_assert(read_token(&parser, vars), TRUE,
+					"Execute requires a path to read on"
+					" line %u (of file %s).\n",
+					parser.line, file_path);
+				file = fopen(parser.token, "r");
+				p_assert(file != NULL, TRUE,
+					"Could not open file %s for execution,"
+					" on line %u (of file %s).\n",
+					parser.token, parser.line, file_path);
+
+				fseek(file, 0L, SEEK_END);
+				length = ftell(file);
+				value = calloc(1, length + 1);
+				fseek(file, 0L, SEEK_SET);
+				length = fread(value, 1, length, file);
+				value = realloc(value, length);
+				value[length] = 0;
+				fclose(file);
+
+				config_exec(value, "", vars, parser.token);
+
+				free(value);
+			} else if (!strcmp(parser.token + 1, "include")) {
 				p_assert(read_token(&parser, vars), TRUE,
 					"Include requires a path to read on"
 					" line %u (of file %s).\n",
@@ -414,6 +441,15 @@ IN OUT struct variables *vars, const char *file_path)
 				value = realloc(value, length);
 				value[length] = 0;
 				fclose(file);
+
+				src = realloc(src, strlen(src)
+					+ strlen(value) + 1);
+
+				memmove(src + parser.index + strlen(value),
+					src + parser.index,
+					strlen(src + parser.index));
+				memcpy(src + parser.index, value,
+					strlen(value));
 
 				config_exec(value, "", vars, parser.token);
 

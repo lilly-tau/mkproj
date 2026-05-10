@@ -423,15 +423,23 @@ IN OUT struct variables *vars, const char *file_path)
 
 				free(value);
 			} else if (!strcmp(parser.token + 1, "include")) {
+				index = parser.index - strlen(parser.token);
+				length = strlen(parser.token) + parser.next;
+
+
 				p_assert(read_token(&parser, vars), TRUE,
 					"Include requires a path to read on"
 					" line %u (of file %s).\n",
 					parser.line, file_path);
+
+				memset(src + index, ' ', length + 1);
+
 				file = fopen(parser.token, "r");
 				p_assert(file != NULL, TRUE,
 					"Could not open file %s for include,"
 					" on line %u (of file %s).\n",
 					parser.token, parser.line, file_path);
+
 
 				fseek(file, 0L, SEEK_END);
 				length = ftell(file);
@@ -444,6 +452,7 @@ IN OUT struct variables *vars, const char *file_path)
 
 				src = realloc(src, strlen(src)
 					+ strlen(value) + 1);
+				parser.src = src;
 
 				memmove(src + parser.index + strlen(value),
 					src + parser.index,
@@ -451,7 +460,8 @@ IN OUT struct variables *vars, const char *file_path)
 				memcpy(src + parser.index, value,
 					strlen(value));
 
-				config_exec(value, "", vars, parser.token);
+				parser.tindex = parser.index;
+				parser.next = 0;
 
 				free(value);
 			} else if (!strcmp(parser.token + 1, "call")) {

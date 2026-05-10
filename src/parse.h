@@ -8,13 +8,14 @@
 #define EOTOK ", \t"
 
 struct parser {
-	char *src, *token;
+	const char *src;
+	char *token;
 	size_t index, tindex, token_capacity, next, srclen, line;
 	BOOLEAN is_str;
 };
 
 void
-create_parser(OUT CREATED struct parser *ret, const char *src);
+create_parser(OUT CREATED struct parser *ret, SHARED const char *src);
 
 void
 destroy_parser(IN DESTROYED struct parser *ret);

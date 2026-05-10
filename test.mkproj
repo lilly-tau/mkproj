@@ -1,9 +1,10 @@
 @ This is a comment
 @help_function:
-	#execute "test-help.mkproj"
 #return
 
 		@@help:
+	#include "test-help.mkproj"
+@@
 
 	\ list "a\x03b\x03c\x03d\x03NIL"
 	@loop:
@@ -15,7 +16,6 @@
 		> $element "\n"
 		%loop
 	@.end:
-
 
 #call %help_function
 \ x ( curdir )

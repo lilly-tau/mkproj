@@ -12,8 +12,7 @@ void
 create_parser(struct parser *ret, const char *src)
 {
 	memset(ret, 0, sizeof(*ret));
-	ret->src = malloc(strlen(src) + 1);
-	strcpy(ret->src, src);
+	ret->src = src;
 	ret->srclen = strlen(ret->src);
 
 	ret->token = malloc(ret->token_capacity = 0x200);
@@ -22,7 +21,6 @@ create_parser(struct parser *ret, const char *src)
 void
 destroy_parser(struct parser *ret)
 {
-	free(ret->src);
 	free(ret->token);
 }
 

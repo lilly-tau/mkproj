@@ -14,6 +14,8 @@ typedef unsigned char BOOLEAN;
 #define REALLOC		/* must have been allocated by the user */
 #define CREATED		/* must be destroyed */
 #define DESTROYED	/* must have been created */
+#define SHARED		/* The pointer must be valid until destruction\
+			   of the type. */
 
 void
 p_assert(BOOLEAN condition, BOOLEAN fatal, IN const char *fmt, ...);
